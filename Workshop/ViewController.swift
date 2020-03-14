@@ -15,7 +15,7 @@ class ViewController: UIViewController {
     let regionRadius: CLLocationDistance = 10000
     let locationManager = CLLocationManager()
     let initialLocation = CLLocation(latitude: 40.766548, longitude: -73.9779713) //testing
-    var bicycles = [MKPointAnnotation]()
+    var bicycles = [String: [MKPointAnnotation]]()
     var locationAction: NewLocationAction?
 
     @IBOutlet weak var mapView: MKMapView!
@@ -26,10 +26,18 @@ class ViewController: UIViewController {
             DispatchQueue.concurrentPerform(iterations: network.capacity - 1) { index in
                 guard let href = network[index].href else { return }
                 APIServices.shared.getBicycles(href: href) { [weak self] (network) in
-                    let annotation = MKPointAnnotation()
-                    annotation.coordinate = CLLocationCoordinate2D(latitude: network!.location!.latitude!, longitude: network!.location!.longitude!)
-                    self?.bicycles.append(annotation)
-                    self?.mapView.addAnnotation(annotation)
+                    guard let stations = network?.stations else { return }
+                    for station in stations {
+                        if station.free_bikes! > 0 {
+                            let annotation = MKPointAnnotation()
+                            annotation.coordinate = CLLocationCoordinate2D(latitude: station.latitude!, longitude: station.longitude!)
+                            if self?.bicycles[network!.id!] == nil { self?.bicycles[network!.id!] = [MKPointAnnotation]() }
+                            self?.bicycles[network!.id!]?.append(annotation)
+                            DispatchQueue.main.async { [weak self] in
+                                self?.mapView.addAnnotation(annotation)
+                            }
+                        }
+                    }
                 }
                }
         }
@@ -108,7 +116,7 @@ struct Network: Codable {
     let id: String?
     let location: Location?
     let name: String?
-    let stations: [Station]?
+    var stations: [Station]?
 
     init(_ dictionary: [String: Any]) {
         self.company = dictionary["company"] as? [String]
@@ -118,7 +126,10 @@ struct Network: Codable {
         self.location = locationKeys != nil ? Location(locationKeys!) : nil
         self.name = dictionary["name"] as? String ?? ""
         self.stations = [Station]()
-        let stationKeys = dictionary["stations"] as? [[String:Any]]
+        guard let stationKeys = dictionary["stations"] as? [[String:Any]] else { return }
+        for dic in stationKeys {
+            self.stations!.append(Station(dic))
+        }
         //TODO
     }
 }
