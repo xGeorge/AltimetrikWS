@@ -62,7 +62,7 @@ class APIServices {
                     let jsonResponse = try JSONSerialization.jsonObject(with: data, options: [])
                     guard let networks = jsonResponse as? [String: Any] else { return completion(nil) }
                     guard let jsonArray = networks["network"] as? [String: Any] else { return completion(nil) }
-                      completion(Network(jsonArray))
+                    completion(Network(jsonArray))
                 }
                 catch let parsingError {
                     print("Error", parsingError)

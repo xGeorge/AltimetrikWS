@@ -23,8 +23,9 @@ class ViewController: UIViewController {
     func showBikesNear(from network: [Network]?) {
         guard let network = network else { return }
         DispatchQueue.global().async {
-            DispatchQueue.concurrentPerform(iterations: network.capacity - 1) { index in
-                guard let href = network[index].href else { return }
+            DispatchQueue.concurrentPerform(iterations: network.capacity) { index in
+                let fixedIndex = index != 0 ? index - 1 : 0
+                guard let href = network[fixedIndex].href else { return }
                 APIServices.shared.getBicycles(href: href) { [weak self] (network) in
                     guard let stations = network?.stations else { return }
                     for station in stations {
@@ -53,12 +54,12 @@ class ViewController: UIViewController {
         LocationServices.shared.getAdress(location: location, completion: { address, error in
             guard let address = address, error == nil,
                 let countryCode = address["CountryCode"] as? String,
-                let state = address["State"] as? String else { return }
+                let city = address["City"] as? String else { return }
             APIServices.shared.getNetwork { (networks) in
                 guard var networks = networks else { return }
                 networks = networks.filter { (network) -> Bool in
-                    let networkState = network.location?.city?.components(separatedBy: ", ")
-                    let stateMatch = (networkState != nil && networkState?.capacity == 2) ? state == networkState?[1] : state == network.location?.city
+                    let networkCity = network.location?.city?.components(separatedBy: ", ")
+                    let stateMatch = (networkCity != nil && networkCity!.capacity > 1) ? city == networkCity?[0] : city == network.location?.city
                     return network.location?.country == countryCode && stateMatch
                 }
                 DispatchQueue.main.async { [weak self] in
